@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7wriner</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f5f1eb;
+  --bg2:       #edeae3;
+  --bg3:       #e4e0d8;
+  --surface:   #faf8f4;
+  --border:    #d8d2c8;
+  --border2:   #c8c0b4;
+  --text:      #2a2520;
+  --text-muted:#7a7268;
+  --text-faint:#b0a898;
+  --accent:    #c07830;
+  --accent2:   #a06020;
+  --dim-l2:    rgba(0,0,0,0.02);
+  --dim-l1:    rgba(0,0,0,0.04);
+  --center-bg: #faf8f4;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Noto Serif JP', serif;
+  --line-w: 380px;
+  --line-gap: 2px;
+  --transition: 0.28s cubic-bezier(0.4,0,0.2,1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 13px;
+}
+
+/* ── HEADER ── */
+#header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.logo em { color: var(--accent); font-style: normal; }
+
+#line-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 24px;
+}
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: background var(--transition), transform var(--transition);
+}
+.dot.active { background: var(--accent); transform: scale(1.4); }
+
+.spacer { flex: 1; }
+
+
+
+#menu-btn {
+  margin-left: 16px;
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  border-radius: 3px;
+  padding: 3px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: border-color 0.15s, color 0.15s;
+}
+#menu-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── STAGE ── */
+#stage {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── LINES CONTAINER ── */
+#lines-container {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Center overlay glow */
+#lines-container::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(var(--line-w) + 2px);
+  pointer-events: none;
+  box-shadow: 0 0 40px rgba(180,120,40,0.08);
+  z-index: 1;
+}
+
+/* ── VIEWPORT (clips to 3 lines) ── */
+#viewport {
+  width: calc(var(--line-w) * 3 + var(--line-gap) * 2);
+  margin: 0 auto;
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── LINES TRACK ── */
+#lines-track {
+  display: flex;
+  gap: var(--line-gap);
+  transition: transform var(--transition);
+  will-change: transform;
+  min-width: max-content;
+}
+
+/* ── SINGLE LINE ── */
+.line-col {
+  width: var(--line-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  transition: background var(--transition), border-color var(--transition), opacity var(--transition);
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* distance-based dimming */
+.line-col[data-dist="0"] {
+  background: var(--center-bg);
+  border-color: var(--border2);
+  z-index: 2;
+}
+.line-col[data-dist="1"] {
+  opacity: 0.75;
+}
+.line-col[data-dist="2"] {
+  opacity: 0.45;
+}
+
+/* line header */
+.line-head {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.line-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  min-width: 18px;
+}
+
+.line-col[data-dist="0"] .line-num { color: var(--accent); }
+
+.line-title-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+.line-col[data-dist="0"] .line-title-input { color: var(--accent2); }
+
+/* line body */
+.line-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 4px;
+}
+
+.line-body::-webkit-scrollbar { width: 3px; }
+.line-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── ITEMS ── */
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s;
+  position: relative;
+  user-select: none;
+}
+.item:hover { background: rgba(0,0,0,0.04); }
+.item.selected { background: rgba(180,120,40,0.12); }
+.item.dragging { opacity: 0.4; }
+.item.drag-over { background: rgba(180,120,40,0.15); box-shadow: inset 0 -2px 0 var(--accent); }
+
+.item-bullet {
+  width: 14px;
+  min-width: 14px;
+  padding-top: 3px;
+  color: var(--text-faint);
+  font-size: 9px;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+.item:hover .item-bullet { color: var(--text-muted); }
+.item.done .item-bullet { color: var(--accent); }
+
+.item-text {
+  flex: 1;
+  font-family: var(--serif);
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.75;
+  word-break: break-all;
+  white-space: pre-wrap;
+  outline: none;
+  border: none;
+  background: none;
+  resize: none;
+  width: 100%;
+  min-height: 22px;
+  overflow: hidden;
+  cursor: text;
+}
+.item.done .item-text { text-decoration: line-through; color: var(--text-faint); }
+.line-col[data-dist="0"] .item-text { color: var(--text); }
+.line-col[data-dist="1"] .item-text { color: var(--text-muted); }
+.line-col[data-dist="2"] .item-text { color: var(--text-faint); }
+
+/* ── TOP INPUT BAR ── */
+#top-input-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#top-input-inner {
+  width: var(--line-w);
+  /* viewportと同じ幅のラッパー内で中央列に合わせる */
+  margin: 0 calc(var(--line-w) + var(--line-gap));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 6px 12px;
+  transition: border-color 0.15s;
+}
+#top-input-inner:focus-within {
+  border-color: var(--accent);
+}
+#top-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--text);
+  padding: 2px 0;
+  resize: none;
+  line-height: 1.7;
+}
+#top-input::placeholder { color: var(--text-faint); font-size: 12px; font-family: var(--mono); letter-spacing: 0.04em; }
+
+/* ── FADE MASKS on viewport edges ── */
+#viewport::before,
+#viewport::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 60px;
+  pointer-events: none;
+  z-index: 5;
+}
+#viewport::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg), transparent);
+}
+#viewport::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg), transparent);
+}
+
+/* ── BOTTOM BAR ── */
+#bottom-bar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bot-btn {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: color 0.12s, background 0.12s;
+}
+.bot-btn:hover { color: var(--text-muted); background: var(--surface); }
+.bot-btn.accent { color: var(--accent); }
+.bot-btn.danger { color: #9b4a3a; }
+
+.bot-sep { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
+.bot-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+#shift-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
+/* ── MENU PANEL ── */
+#menu-panel {
+  position: fixed;
+  top: 40px; right: 0;
+  width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-top: none;
+  z-index: 50;
+  display: none;
+  box-shadow: -4px 4px 20px rgba(0,0,0,0.12);
+}
+#menu-panel.open { display: block; }
+
+.mp-item {
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.1s, color 0.1s;
+}
+.mp-item:hover { background: var(--bg3); color: var(--text); }
+.mp-item.danger { color: #9b4a3a; }
+.mp-item.sep { border-top: 1px solid var(--border); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 200;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── MODAL ── */
+#modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(40,30,20,0.4);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+#modal-overlay.open { display: flex; }
+#modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  min-width: 320px;
+  max-width: 440px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+.modal-head {
+  display: flex; align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+.modal-close {
+  background: none; border: none;
+  color: var(--text-faint);
+  font-size: 16px; cursor: pointer;
+  transition: color 0.1s;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 16px; }
+.modal-actions {
+  display: flex; gap: 8px;
+  padding: 8px 16px 14px;
+}
+.modal-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--text-muted);
+  padding: 5px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  letter-spacing: 0.04em;
+}
+.modal-btn:hover { background: var(--border); color: var(--text); }
+.modal-btn.danger { color: #9b4a3a; }
+
+/* ── FULL EDITOR MODAL ── */
+#editor-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(40,30,20,0.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+#editor-overlay.open { display: flex; }
+
+#editor-modal {
+  width: 680px;
+  max-width: 92vw;
+  height: 72vh;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+}
+
+#editor-modal-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 10px;
+}
+#editor-modal-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  flex: 1;
+}
+#editor-modal-close {
+  background: none; border: none;
+  color: var(--text-faint);
+  font-size: 18px; cursor: pointer;
+  line-height: 1; padding: 0 2px;
+  transition: color 0.1s;
+}
+#editor-modal-close:hover { color: var(--text); }
+
+#editor-modal-body {
+  flex: 1;
+  padding: 20px 24px;
+  overflow: hidden;
+  display: flex;
+}
+
+#editor-textarea {
+  flex: 1;
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.9;
+  resize: none;
+  overflow-y: auto;
+}
+#editor-textarea::-webkit-scrollbar { width: 4px; }
+#editor-textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+#editor-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  gap: 8px;
+  flex-shrink: 0;
+}
+#editor-char-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-right: auto;
+  letter-spacing: 0.04em;
+}
+
+/* ── MULTI-SELECT ACTION BAR ── */
+#action-bar {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--accent);
+  border-radius: 24px;
+  padding: 8px 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 150;
+  white-space: nowrap;
+}
+#action-bar.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: all;
+}
+#action-bar-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  padding: 0 10px 0 6px;
+  letter-spacing: 0.04em;
+}
+.ab-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: 16px;
+  color: white;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.12s;
+}
+.ab-btn:hover { background: rgba(255,255,255,0.28); }
+.ab-btn.danger { background: rgba(180,60,40,0.7); }
+.ab-btn.danger:hover { background: rgba(180,60,40,0.9); }
+.ab-sep { width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 2px; }
+
+/* 複数選択中のアイテム */
+.item.multi-selected {
+  background: rgba(192,120,48,0.15);
+  outline: 1px solid rgba(192,120,48,0.4);
+  outline-offset: -1px;
+}
+
+/* ── SEND / CALL ── */
+#call-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(40,30,20,0.4);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+#call-overlay.open { display: flex; }
+
+#call-modal {
+  width: 480px;
+  max-width: 92vw;
+  max-height: 70vh;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+}
+#call-modal-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#call-modal-title {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+#call-modal-close {
+  background: none; border: none;
+  color: var(--text-faint); font-size: 18px;
+  cursor: pointer; line-height: 1;
+  transition: color 0.1s;
+}
+#call-modal-close:hover { color: var(--text); }
+
+#call-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+#call-list::-webkit-scrollbar { width: 4px; }
+#call-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.call-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.1s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.call-item:hover { background: var(--bg2); }
+.call-item.selected-call { background: rgba(192,120,48,0.1); }
+.call-item-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.call-item-preview {
+  font-family: var(--serif);
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.call-item-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.call-empty {
+  padding: 24px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+#call-modal-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#call-modal-foot .modal-btn { font-size: 11px; }
+#call-modal-foot .modal-btn.danger { color: #9b4a3a; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="logo"><em>7</em>wriner</div>
+    <div id="line-indicator"></div>
+    <div class="spacer"></div>
+    <button id="menu-btn" onclick="toggleMenu()">menu</button>
+  </div>
+
+  <!-- TOP INPUT BAR -->
+  <div id="top-input-bar">
+    <div id="top-input-inner">
+      <textarea id="top-input" rows="3" placeholder="センターラインに追加… (⌘+Enter)"></textarea>
+    </div>
+  </div>
+
+  <!-- LINES STAGE -->
+  <div id="stage">
+    <div id="lines-container">
+      <div id="viewport">
+        <div id="lines-track"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div id="bottom-bar">
+    <span id="shift-hint">⌘← / ⌘→ &nbsp;line shift</span>
+    <div class="bot-sep"></div>
+    <button class="bot-btn" onclick="moveItemLeft()" title="選択アイテムを左Lineへ">← move</button>
+    <button class="bot-btn" onclick="moveItemRight()" title="選択アイテムを右Lineへ">move →</button>
+    <div class="bot-sep"></div>
+    <button class="bot-btn" onclick="mergeDown()" title="下の行にマージ">merge</button>
+    <button class="bot-btn accent" onclick="sendLine()" title="現在のLineを退避">Send</button>
+    <button class="bot-btn" onclick="openCall()" title="退避したLineを呼び出す">Call</button>
+    <div class="bot-sep"></div>
+    <div class="bot-right">
+      <button class="bot-btn" onclick="openExport()">export</button>
+      <button class="bot-btn danger" onclick="confirmClearLine()">clear line</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MENU PANEL -->
+<div id="menu-panel">
+  <div class="mp-item" onclick="openExport()">↑ &nbsp;export</div>
+  <div class="mp-item" onclick="backupDownload()">⬇ &nbsp;backup</div>
+  <div class="mp-item" onclick="importReplace()">↺ &nbsp;import</div>
+  <div class="mp-item sep danger" onclick="confirmClearAll()">✕ &nbsp;clear all</div>
+  <div class="mp-item sep" onclick="openAbout()">? &nbsp;about</div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div id="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-title"></span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+
+<!-- CALL MODAL -->
+<div id="call-overlay" onclick="closeCallOnOverlay(event)">
+  <div id="call-modal">
+    <div id="call-modal-head">
+      <span id="call-modal-title">temporary placement</span>
+      <button id="call-modal-close" onclick="closeCall()">×</button>
+    </div>
+    <div id="call-list"></div>
+    <div id="call-modal-foot">
+      <button class="modal-btn" onclick="callSelected()">呼び出す</button>
+      <button class="modal-btn" onclick="callAsTemplate()">テンプレート利用</button>
+      <button class="modal-btn danger" onclick="deleteCallSelected()">削除</button>
+      <button class="modal-btn" onclick="closeCall()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULL EDITOR MODAL -->
+<div id="editor-overlay" onclick="closeEditorOnOverlay(event)">
+  <div id="editor-modal">
+    <div id="editor-modal-head">
+      <span id="editor-modal-label">editing…</span>
+      <button id="editor-modal-close" onclick="closeEditor()">×</button>
+    </div>
+    <div id="editor-modal-body">
+      <textarea id="editor-textarea" spellcheck="false"></textarea>
+    </div>
+    <div id="editor-modal-foot">
+      <span id="editor-char-count">0 chars</span>
+      <button class="modal-btn" onclick="closeEditor()">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="action-bar">
+  <span id="action-bar-count">0 selected</span>
+  <div class="ab-sep"></div>
+  <button class="ab-btn" onclick="mergeSelected()" title="M">Merge</button>
+  <button class="ab-btn" onclick="moveSelectedLeft()" title="[">← Move</button>
+  <button class="ab-btn" onclick="moveSelectedRight()" title="]">Move →</button>
+  <div class="ab-sep"></div>
+  <button class="ab-btn danger" onclick="deleteSelected()" title="⌫">Delete</button>
+  <div class="ab-sep"></div>
+  <button class="ab-btn" onclick="clearMultiSelect()" title="Esc">✕</button>
+</div>
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const NUM_LINES = 7;
+const VISIBLE = 5; // center + 2 each side
+
+let state = loadState();
+let centerIdx = state.centerIdx || 0;        // 0-6: which line is center
+let selectedLine = centerIdx;
+let selectedItem = -1;                        // index within that line
+let dragSrc = null;                           // {lineIdx, itemIdx}
+let multiSelected = [];                       // [{lineIdx, itemIdx}, ...]
+let menuOpen = false;
+
+function defaultState() {
+  const lines = Array.from({length: NUM_LINES}, (_, i) => ({
+    title: `Line ${i + 1}`,
+    items: []
+  }));
+  // seed some data
+  lines[0].title = 'inbox';
+  lines[0].items = [
+    { text: 'あとで考えたいことをここに放り込んでおく', done: false },
+    { text: '気になったこと、思いついたこと、なんでも', done: false },
+    { text: 'Cmd+→ で隣のLineに移動できます', done: false },
+  ];
+  lines[1].title = 'ideas';
+  lines[1].items = [];
+  lines[2].title = 'writing';
+  lines[2].items = [];
+  lines[3].title = 'tasks';
+  lines[3].items = [];
+  lines[4].title = 'reading';
+  lines[4].items = [];
+  lines[5].title = 'archive';
+  lines[5].items = [];
+  lines[6].title = 'temp';
+  lines[6].items = [];
+  return { lines, centerIdx: 0 };
+}
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem('7wriner_v2'));
+    if (s && s.lines && s.lines.length === NUM_LINES) return s;
+  } catch(e) {}
+  return defaultState();
+}
+
+function saveState() {
+  state.centerIdx = centerIdx;
+  localStorage.setItem('7wriner_v2', JSON.stringify(state));
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function render() {
+  renderDots();
+  renderTrack();
+
+  saveState();
+}
+
+function renderDots() {
+  const ind = document.getElementById('line-indicator');
+  ind.innerHTML = '';
+  for (let i = 0; i < NUM_LINES; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === centerIdx ? ' active' : '');
+    ind.appendChild(d);
+  }
+}
+
+function renderTrack() {
+  const track = document.getElementById('lines-track');
+  track.innerHTML = '';
+
+  // 表示する5列のlineIdxをmodで計算（循環）
+  const slots = [-1, 0, 1].map(offset =>
+    ((centerIdx + offset) % NUM_LINES + NUM_LINES) % NUM_LINES
+  );
+
+  slots.forEach((lineIdx, slotPos) => {
+    const dist = Math.abs(slotPos - 1); // slot1が中央
+    const col = buildLineCol(lineIdx, dist);
+    track.appendChild(col);
+  });
+
+  // translateは不要（常に5列固定表示）
+  track.style.transform = 'translateX(0)';
+
+  // DOM追加後にまとめてautoResize＋複数選択ハイライト
+  requestAnimationFrame(() => {
+    track.querySelectorAll('.item-text').forEach(ta => autoResize(ta));
+    highlightMultiSelected();
+  });
+}
+
+function buildLineCol(lineIdx, dist) {
+  const lineData = state.lines[lineIdx];
+
+  const col = document.createElement('div');
+  col.className = 'line-col';
+  col.dataset.dist = dist;
+  col.dataset.lineIdx = lineIdx;
+
+  // header
+  const head = document.createElement('div');
+  head.className = 'line-head';
+
+  const num = document.createElement('div');
+  num.className = 'line-num';
+  num.textContent = String(lineIdx + 1).padStart(2, '0');
+
+  const titleInput = document.createElement('input');
+  titleInput.className = 'line-title-input';
+  titleInput.value = lineData.title;
+  titleInput.placeholder = 'untitled';
+  titleInput.addEventListener('change', () => {
+    state.lines[lineIdx].title = titleInput.value;
+    saveState();
+  });
+  titleInput.addEventListener('click', () => shiftToCenter(lineIdx));
+
+  head.appendChild(num);
+  head.appendChild(titleInput);
+  col.appendChild(head);
+
+  // body
+  const body = document.createElement('div');
+  body.className = 'line-body';
+
+  lineData.items.forEach((item, itemIdx) => {
+    const el = buildItem(lineIdx, itemIdx, item, dist);
+    body.appendChild(el);
+  });
+
+  // drag-over on empty space
+  body.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  });
+  body.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (dragSrc === null) return;
+    if (dragSrc.lineIdx === lineIdx) return;
+    const item = state.lines[dragSrc.lineIdx].items.splice(dragSrc.itemIdx, 1)[0];
+    state.lines[lineIdx].items.push(item);
+    dragSrc = null;
+    render();
+  });
+
+  col.appendChild(body);
+
+  // footer削除：入力は上部の共通inputから行う
+
+  // click on col to shift
+  col.addEventListener('click', (e) => {
+    if (e.target === col || e.target === body) shiftToCenter(lineIdx);
+  });
+
+  return col;
+}
+
+function buildItem(lineIdx, itemIdx, item, dist) {
+  const el = document.createElement('div');
+  el.className = 'item' + (item.done ? ' done' : '') +
+    (lineIdx === selectedLine && itemIdx === selectedItem ? ' selected' : '');
+  el.draggable = true;
+  el.dataset.lineIdx = lineIdx;
+  el.dataset.itemIdx = itemIdx;
+
+  const bullet = document.createElement('div');
+  bullet.className = 'item-bullet';
+  bullet.textContent = item.done ? '✓' : '◦';
+  bullet.addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.lines[lineIdx].items[itemIdx].done = !item.done;
+    render();
+  });
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'item-text';
+  textarea.value = item.text;
+  textarea.rows = 1;
+  autoResize(textarea);
+  textarea.addEventListener('input', () => {
+    state.lines[lineIdx].items[itemIdx].text = textarea.value;
+    autoResize(textarea);
+    saveState();
+  });
+  textarea.addEventListener('focus', () => {
+    selectedLine = lineIdx;
+    selectedItem = itemIdx;
+    highlightSelected();
+  });
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const text = textarea.value.trim();
+      if (!text) return;
+      state.lines[lineIdx].items.splice(itemIdx + 1, 0, { text: '', done: false });
+      render();
+      setTimeout(() => {
+        const allItems = document.querySelectorAll(`.line-col[data-line-idx="${lineIdx}"] .item-text`);
+        if (allItems[itemIdx + 1]) allItems[itemIdx + 1].focus();
+      }, 20);
+    }
+    if (e.key === 'Backspace' && textarea.value === '') {
+      e.preventDefault();
+      state.lines[lineIdx].items.splice(itemIdx, 1);
+      render();
+    }
+  });
+
+  // drag
+  el.addEventListener('dragstart', (e) => {
+    dragSrc = { lineIdx, itemIdx };
+    el.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  el.addEventListener('dragend', () => {
+    dragSrc = null;
+    render();
+  });
+  el.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    el.classList.add('drag-over');
+  });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', (e) => {
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    if (dragSrc === null) return;
+    if (dragSrc.lineIdx === lineIdx && dragSrc.itemIdx === itemIdx) return;
+    const moved = state.lines[dragSrc.lineIdx].items.splice(dragSrc.itemIdx, 1)[0];
+    const targetIdx = dragSrc.lineIdx === lineIdx && dragSrc.itemIdx < itemIdx ? itemIdx - 1 : itemIdx;
+    state.lines[lineIdx].items.splice(targetIdx, 0, moved);
+    dragSrc = null;
+    render();
+  });
+
+  el.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      toggleMultiSelect(lineIdx, itemIdx);
+    } else if (e.target === el) {
+      selectedLine = lineIdx;
+      selectedItem = itemIdx;
+      highlightSelected();
+    }
+  });
+  // textareaのCmd+クリックも捕捉
+  textarea.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMultiSelect(lineIdx, itemIdx);
+    }
+  });
+  bullet.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMultiSelect(lineIdx, itemIdx);
+    }
+  });
+  el.addEventListener('dblclick', (e) => {
+    openEditor(lineIdx, itemIdx);
+  });
+
+  el.appendChild(bullet);
+  el.appendChild(textarea);
+  return el;
+}
+
+function highlightSelected() {
+  document.querySelectorAll('.item.selected').forEach(el => el.classList.remove('selected'));
+  if (selectedItem >= 0) {
+    const cols = document.querySelectorAll(`.line-col[data-line-idx="${selectedLine}"] .item`);
+    if (cols[selectedItem]) cols[selectedItem].classList.add('selected');
+  }
+}
+
+function autoResize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+// ═══════════════════════════════════════════
+// LINE SHIFT (Cmd + ← / →)
+// ═══════════════════════════════════════════
+function shiftLeft() {
+  centerIdx = (centerIdx - 1 + NUM_LINES) % NUM_LINES; render();
+}
+function shiftRight() {
+  centerIdx = (centerIdx + 1) % NUM_LINES; render();
+}
+function shiftToCenter(lineIdx) {
+  if (lineIdx !== centerIdx) { centerIdx = lineIdx; render(); }
+}
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'ArrowLeft') { e.preventDefault(); shiftLeft(); }
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'ArrowRight') { e.preventDefault(); shiftRight(); }
+  // 単一アイテム移動 Shift+Cmd+←/→
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'ArrowLeft') { e.preventDefault(); moveItemLeft(); }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'ArrowRight') { e.preventDefault(); moveItemRight(); }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'ArrowUp') { e.preventDefault(); moveItemUp(); }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'ArrowDown') { e.preventDefault(); moveItemDown(); }
+  // 複数選択中のショートカット
+  if (multiSelected.length > 0) {
+    if (e.key === 'Escape') { clearMultiSelect(); return; }
+    if (e.key === 'm' && !e.metaKey && !e.ctrlKey) { mergeSelected(); return; }
+    if (e.key === '[') { e.preventDefault(); moveSelectedLeft(); return; }
+    if (e.key === ']') { e.preventDefault(); moveSelectedRight(); return; }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      // テキスト編集中でなければ削除
+      if (document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault(); deleteSelected(); return;
+      }
+    }
+  }
+});
+
+// ═══════════════════════════════════════════
+// ITEM MOVEMENT
+// ═══════════════════════════════════════════
+function moveItemLeft() {
+  if (selectedItem < 0) return;
+  const srcLine = centerIdx;
+  const targetLine = ((srcLine - 1) + NUM_LINES) % NUM_LINES;
+  const item = state.lines[srcLine].items.splice(selectedItem, 1)[0];
+  state.lines[targetLine].items.push(item);
+  selectedItem = -1;
+  selectedLine = -1;
+  saveState(); render();
+  toast('← left lineに移動しました');
+}
+
+function moveItemRight() {
+  if (selectedItem < 0) return;
+  const srcLine = centerIdx;
+  const targetLine = (srcLine + 1) % NUM_LINES;
+  const item = state.lines[srcLine].items.splice(selectedItem, 1)[0];
+  state.lines[targetLine].items.push(item);
+  selectedItem = -1;
+  selectedLine = -1;
+  saveState(); render();
+  toast('right line → に移動しました');
+}
+
+function moveItemUp() {
+  if (selectedItem < 0) return;
+  const items = state.lines[centerIdx].items;
+  if (selectedItem === 0) return;
+  const tmp = items[selectedItem - 1];
+  items[selectedItem - 1] = items[selectedItem];
+  items[selectedItem] = tmp;
+  selectedItem--;
+  saveState(); render();
+  // フォーカスを移動後の位置に戻す
+  setTimeout(() => {
+    const inputs = document.querySelectorAll(`.line-col[data-line-idx=${centerIdx}] .item-text`);
+    if (inputs[selectedItem]) inputs[selectedItem].focus();
+  }, 20);
+}
+
+function moveItemDown() {
+  if (selectedItem < 0) return;
+  const items = state.lines[centerIdx].items;
+  if (selectedItem === items.length - 1) return;
+  const tmp = items[selectedItem + 1];
+  items[selectedItem + 1] = items[selectedItem];
+  items[selectedItem] = tmp;
+  selectedItem++;
+  saveState(); render();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll(`.line-col[data-line-idx=${centerIdx}] .item-text`);
+    if (inputs[selectedItem]) inputs[selectedItem].focus();
+  }, 20);
+}
+
+function mergeDown() {
+  if (selectedItem < 0) return;
+  const items = state.lines[selectedLine].items;
+  if (selectedItem >= items.length - 1) return;
+  items[selectedItem].text += ' ' + items[selectedItem + 1].text;
+  items.splice(selectedItem + 1, 1);
+  render();
+  toast('mergeしました');
+}
+
+// ═══════════════════════════════════════════
+// CLEAR
+// ═══════════════════════════════════════════
+function confirmClearLine() {
+  openModal('Clear Line', `<p style="font-size:12px;color:var(--text-muted)">Line ${centerIdx + 1}「${state.lines[centerIdx].title}」のアイテムをすべて削除します。</p>`,
+    [
+      { label: 'Clear', danger: true, fn: () => { state.lines[centerIdx].items = []; closeModal(); render(); toast('クリアしました'); }},
+      { label: 'Cancel', fn: closeModal }
+    ]);
+}
+
+function confirmClearAll() {
+  openModal('Clear All Data', `<p style="font-size:12px;color:#9b4a3a">すべてのデータを削除します。元に戻せません。</p>`,
+    [
+      { label: 'Clear All', danger: true, fn: () => { state = defaultState(); centerIdx = state.centerIdx; closeModal(); render(); toast('消去しました'); }},
+      { label: 'Cancel', fn: closeModal }
+    ]);
+}
+
+// ═══════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════
+function openExport() {
+  closeMenu();
+  const text = state.lines.map((l, i) =>
+    `=== Line ${i+1}: ${l.title} ===\n` +
+    l.items.map(it => (it.done ? '✓ ' : '  ') + it.text).join('\n')
+  ).join('\n\n');
+  openModal('Export', `<textarea style="width:100%;min-height:160px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:10px;font-family:var(--mono);font-size:10px;color:var(--text-muted);resize:vertical;outline:none;line-height:1.7" readonly>${text}</textarea>`,
+    [
+      { label: 'Copy', fn: () => { navigator.clipboard.writeText(text).then(() => toast('コピーしました')); }},
+      { label: 'Close', fn: closeModal }
+    ]);
+}
+
+function backupDownload() {
+  closeMenu();
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '7wriner_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  toast('バックアップをダウンロードしました');
+}
+
+function importReplace() {
+  closeMenu();
+  openModal('Import & Replace', `<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">バックアップJSONを選択してください。</p><input type="file" id="imp-file" accept=".json" style="font-size:11px;color:var(--text-muted)">`,
+    [
+      { label: 'Import', fn: doImport },
+      { label: 'Cancel', fn: closeModal }
+    ]);
+}
+
+function doImport() {
+  const f = document.getElementById('imp-file').files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = (e) => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if (d.lines && d.lines.length === NUM_LINES) {
+        state = d; centerIdx = d.centerIdx || 0;
+        saveState(); closeModal(); render();
+        toast('インポートしました');
+      } else { toast('フォーマットが合いません'); }
+    } catch { toast('読み込み失敗'); }
+  };
+  r.readAsText(f);
+}
+
+function openAbout() {
+  closeMenu();
+  openModal('About', `
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:1.9;letter-spacing:0.04em">
+    7wriner — 7本のLineを持つアウトライナー<br><br>
+    ⌘← / ⌘→ &nbsp;&nbsp;Lineをシフト<br>
+    Lineタイトルクリック &nbsp;&nbsp;そのLineを中央に<br>
+    Enter &nbsp;&nbsp;新しいアイテム追加<br>
+    Backspace (空行) &nbsp;&nbsp;アイテム削除<br>
+    ドラッグ＆ドロップ &nbsp;&nbsp;アイテムをLine間移動<br><br>
+    <span style="color:var(--text-faint)">ver.0.9 — copyright rashita 2017</span>
+    </p>
+  `, [{ label: 'Close', fn: closeModal }]);
+}
+
+// ═══════════════════════════════════════════
+// MENU
+// ═══════════════════════════════════════════
+function toggleMenu() {
+  menuOpen = !menuOpen;
+  document.getElementById('menu-panel').classList.toggle('open', menuOpen);
+}
+function closeMenu() {
+  menuOpen = false;
+  document.getElementById('menu-panel').classList.remove('open');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#menu-btn') && !e.target.closest('#menu-panel')) closeMenu();
+});
+
+// ═══════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════
+function openModal(title, bodyHTML, actions) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHTML;
+  const act = document.getElementById('modal-actions');
+  act.innerHTML = '';
+  (actions || []).forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = 'modal-btn' + (a.danger ? ' danger' : '');
+    btn.textContent = a.label;
+    btn.onclick = a.fn;
+    act.appendChild(btn);
+  });
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOnOverlay(e) { if (e.target.id === 'modal-overlay') closeModal(); }
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════════════════════════
+// TOP INPUT
+// ═══════════════════════════════════════════
+document.getElementById('top-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    const text = e.target.value.trim();
+    if (!text) return;
+    state.lines[centerIdx].items.push({ text, done: false });
+    e.target.value = '';
+    render();
+  }
+});
+
+
+
+
+// ═══════════════════════════════════════════
+// SEND / CALL (Temporary Placement)
+// ═══════════════════════════════════════════
+let tempStorage = JSON.parse(localStorage.getItem('7wriner_temp') || '[]');
+let selectedCallIdx = -1;
+
+function saveTemp() {
+  localStorage.setItem('7wriner_temp', JSON.stringify(tempStorage));
+}
+
+function sendLine() {
+  const line = state.lines[centerIdx];
+  if (line.items.length === 0) { toast('Lineが空です'); return; }
+  const entry = {
+    id: Date.now(),
+    title: line.title,
+    items: JSON.parse(JSON.stringify(line.items)),
+    savedAt: new Date().toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })
+  };
+  tempStorage.unshift(entry);
+  saveTemp();
+  state.lines[centerIdx].items = [];
+  saveState(); render();
+  toast('「' + line.title + '」を退避しました');
+}
+
+function openCall() {
+  selectedCallIdx = -1;
+  renderCallList();
+  document.getElementById('call-overlay').classList.add('open');
+}
+
+function closeCall() {
+  document.getElementById('call-overlay').classList.remove('open');
+  selectedCallIdx = -1;
+}
+
+function closeCallOnOverlay(e) {
+  if (e.target.id === 'call-overlay') closeCall();
+}
+
+function renderCallList() {
+  const list = document.getElementById('call-list');
+  list.innerHTML = '';
+  if (tempStorage.length === 0) {
+    list.innerHTML = '<div class="call-empty">退避されたLineはありません</div>';
+    return;
+  }
+  tempStorage.forEach((entry, i) => {
+    const el = document.createElement('div');
+    el.className = 'call-item' + (i === selectedCallIdx ? ' selected-call' : '');
+    const preview = entry.items.map(it => it.text).join(' / ').slice(0, 60);
+    el.innerHTML = `
+      <div class="call-item-title">${entry.title}</div>
+      <div class="call-item-preview">${preview}${preview.length >= 60 ? '…' : ''}</div>
+      <div class="call-item-meta">${entry.savedAt} — ${entry.items.length} items</div>
+    `;
+    el.addEventListener('click', () => {
+      selectedCallIdx = i;
+      renderCallList();
+    });
+    el.addEventListener('dblclick', () => {
+      selectedCallIdx = i;
+      callSelected();
+    });
+    list.appendChild(el);
+  });
+}
+
+function callSelected() {
+  if (selectedCallIdx < 0) { toast('項目を選択してください'); return; }
+  const entry = tempStorage[selectedCallIdx];
+  // 中央Lineにアイテムを追加
+  state.lines[centerIdx].items.push(...JSON.parse(JSON.stringify(entry.items)));
+  tempStorage.splice(selectedCallIdx, 1);
+  saveTemp();
+  saveState(); render();
+  closeCall();
+  toast('「' + entry.title + '」を呼び出しました');
+}
+
+function callAsTemplate() {
+  if (selectedCallIdx < 0) { toast('項目を選択してください'); return; }
+  const entry = tempStorage[selectedCallIdx];
+  // テンプレート利用：Lineのタイトルも引き継ぐ
+  state.lines[centerIdx].title = entry.title;
+  state.lines[centerIdx].items.push(...JSON.parse(JSON.stringify(entry.items)));
+  saveState(); render();
+  closeCall();
+  toast('テンプレートとして利用しました');
+}
+
+function deleteCallSelected() {
+  if (selectedCallIdx < 0) { toast('項目を選択してください'); return; }
+  tempStorage.splice(selectedCallIdx, 1);
+  saveTemp();
+  selectedCallIdx = -1;
+  renderCallList();
+  toast('削除しました');
+}
+
+// ═══════════════════════════════════════════
+// MULTI SELECT
+// ═══════════════════════════════════════════
+function toggleMultiSelect(lineIdx, itemIdx) {
+  const idx = multiSelected.findIndex(s => s.lineIdx === lineIdx && s.itemIdx === itemIdx);
+  if (idx >= 0) {
+    multiSelected.splice(idx, 1);
+  } else {
+    multiSelected.push({ lineIdx, itemIdx });
+  }
+  updateActionBar();
+  highlightMultiSelected();
+}
+
+function clearMultiSelect() {
+  multiSelected = [];
+  updateActionBar();
+  highlightMultiSelected();
+}
+
+function updateActionBar() {
+  const bar = document.getElementById('action-bar');
+  const count = document.getElementById('action-bar-count');
+  if (multiSelected.length >= 1) {
+    bar.classList.add('show');
+    count.textContent = multiSelected.length + ' selected';
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+function highlightMultiSelected() {
+  document.querySelectorAll('.item.multi-selected').forEach(el => el.classList.remove('multi-selected'));
+  multiSelected.forEach(({ lineIdx, itemIdx }) => {
+    const cols = document.querySelectorAll(`.line-col[data-line-idx="${lineIdx}"] .item`);
+    if (cols[itemIdx]) cols[itemIdx].classList.add('multi-selected');
+  });
+}
+
+function mergeSelected() {
+  if (multiSelected.length < 2) { toast('2つ以上選択してください'); return; }
+  // 同一Line内のものだけマージ（lineIdxでグループ化）
+  const byLine = {};
+  multiSelected.forEach(s => {
+    if (!byLine[s.lineIdx]) byLine[s.lineIdx] = [];
+    byLine[s.lineIdx].push(s.itemIdx);
+  });
+  Object.entries(byLine).forEach(([li, idxs]) => {
+    const lineIdx = parseInt(li);
+    idxs.sort((a, b) => a - b);
+    const merged = idxs.map(i => state.lines[lineIdx].items[i].text).join('\n');
+    // 後ろから削除して最初のインデックスに結果を入れる
+    for (let i = idxs.length - 1; i >= 1; i--) {
+      state.lines[lineIdx].items.splice(idxs[i], 1);
+    }
+    state.lines[lineIdx].items[idxs[0]].text = merged;
+  });
+  multiSelected = [];
+  updateActionBar();
+  saveState(); render();
+  toast('マージしました');
+}
+
+function deleteSelected() {
+  if (multiSelected.length === 0) return;
+  const byLine = {};
+  multiSelected.forEach(s => {
+    if (!byLine[s.lineIdx]) byLine[s.lineIdx] = [];
+    byLine[s.lineIdx].push(s.itemIdx);
+  });
+  Object.entries(byLine).forEach(([li, idxs]) => {
+    const lineIdx = parseInt(li);
+    idxs.sort((a, b) => b - a); // 後ろから削除
+    idxs.forEach(i => state.lines[lineIdx].items.splice(i, 1));
+  });
+  multiSelected = [];
+  updateActionBar();
+  saveState(); render();
+  toast('削除しました');
+}
+
+function moveSelectedLeft() {
+  if (multiSelected.length === 0) return;
+  multiSelected.forEach(({ lineIdx, itemIdx }) => {
+    const target = ((lineIdx - 1) + NUM_LINES) % NUM_LINES;
+    const item = state.lines[lineIdx].items[itemIdx];
+    if (item) state.lines[target].items.push({ ...item });
+  });
+  // 元を削除（後ろから）
+  const byLine = {};
+  multiSelected.forEach(s => {
+    if (!byLine[s.lineIdx]) byLine[s.lineIdx] = [];
+    byLine[s.lineIdx].push(s.itemIdx);
+  });
+  Object.entries(byLine).forEach(([li, idxs]) => {
+    idxs.sort((a, b) => b - a);
+    idxs.forEach(i => state.lines[parseInt(li)].items.splice(i, 1));
+  });
+  multiSelected = [];
+  updateActionBar();
+  saveState(); render();
+  toast('← 左Lineに移動しました');
+}
+
+function moveSelectedRight() {
+  if (multiSelected.length === 0) return;
+  multiSelected.forEach(({ lineIdx, itemIdx }) => {
+    const target = (lineIdx + 1) % NUM_LINES;
+    const item = state.lines[lineIdx].items[itemIdx];
+    if (item) state.lines[target].items.push({ ...item });
+  });
+  const byLine = {};
+  multiSelected.forEach(s => {
+    if (!byLine[s.lineIdx]) byLine[s.lineIdx] = [];
+    byLine[s.lineIdx].push(s.itemIdx);
+  });
+  Object.entries(byLine).forEach(([li, idxs]) => {
+    idxs.sort((a, b) => b - a);
+    idxs.forEach(i => state.lines[parseInt(li)].items.splice(i, 1));
+  });
+  multiSelected = [];
+  updateActionBar();
+  saveState(); render();
+  toast('右Line → に移動しました');
+}
+
+// ═══════════════════════════════════════════
+// FULL EDITOR
+// ═══════════════════════════════════════════
+let editorLineIdx = -1;
+let editorItemIdx = -1;
+
+function openEditor(lineIdx, itemIdx) {
+  editorLineIdx = lineIdx;
+  editorItemIdx = itemIdx;
+  const item = state.lines[lineIdx].items[itemIdx];
+  const ta = document.getElementById('editor-textarea');
+  ta.value = item.text;
+  document.getElementById('editor-modal-label').textContent =
+    'line ' + (lineIdx + 1) + ' — ' + state.lines[lineIdx].title;
+  updateEditorCount();
+  document.getElementById('editor-overlay').classList.add('open');
+  setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 50);
+}
+
+function closeEditor() {
+  if (editorLineIdx >= 0 && editorItemIdx >= 0) {
+    const ta = document.getElementById('editor-textarea');
+    state.lines[editorLineIdx].items[editorItemIdx].text = ta.value;
+    saveState();
+    render();
+  }
+  document.getElementById('editor-overlay').classList.remove('open');
+  editorLineIdx = -1;
+  editorItemIdx = -1;
+}
+
+function closeEditorOnOverlay(e) {
+  if (e.target.id === 'editor-overlay') closeEditor();
+}
+
+function updateEditorCount() {
+  const ta = document.getElementById('editor-textarea');
+  document.getElementById('editor-char-count').textContent = ta.value.length + ' chars';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('editor-textarea').addEventListener('input', updateEditorCount);
+  // Escで閉じる
+  document.getElementById('editor-overlay').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeEditor();
+  });
+});
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+centerIdx = state.centerIdx || 0;
+render();
+</script>
+</body>
+</html>
